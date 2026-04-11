@@ -411,10 +411,19 @@ function App() {
                   <g>
                     <line x1={tooltip.x} x2={tooltip.x} y1={PT} y2={PT+chartH} stroke={ORANGE} strokeWidth={0.8} strokeDasharray="3,3"/>
                     <circle cx={tooltip.x} cy={tooltip.y} r={5} fill={ORANGE} stroke={SURFACE} strokeWidth={2}/>
-                    <rect x={tx-55} y={ty} width={110} height={e.note?46:32} rx={5} fill={SURFACE2} stroke={BORDER}/>
-                    <text x={tx} y={ty+14} textAnchor="middle" fontSize={11} fill={TEXT2}>{e.date}</text>
-                    <text x={tx} y={ty+27} textAnchor="middle" fontSize={13} fontWeight="500" fill={ORANGE}>{e.weight.toFixed(1)} kg</text>
-                    {e.note&&<text x={tx} y={ty+41} textAnchor="middle" fontSize={10} fill="#60a5fa">{e.note.slice(0,18)}{e.note.length>18?"…":""}</text>}
+                    {(() => {
+                      const trend = trendData[tooltip.i];
+                      const rows = 2 + (trend!=null?1:0) + (e.note?1:0);
+                      const h = 10 + rows*15;
+                      let y = ty+14;
+                      return <>
+                        <rect x={tx-58} y={ty} width={116} height={h} rx={5} fill={SURFACE2} stroke={BORDER}/>
+                        <text x={tx} y={y} textAnchor="middle" fontSize={11} fill={TEXT2}>{e.date}</text>
+                        <text x={tx} y={y+=15} textAnchor="middle" fontSize={13} fontWeight="500" fill={ORANGE}>{e.weight.toFixed(1)} kg</text>
+                        {trend!=null&&<text x={tx} y={y+=15} textAnchor="middle" fontSize={11} fill={TREND_COLOR}>7d avg: {trend.toFixed(1)} kg</text>}
+                        {e.note&&<text x={tx} y={y+=15} textAnchor="middle" fontSize={10} fill="#60a5fa">{e.note.slice(0,18)}{e.note.length>18?"…":""}</text>}
+                      </>;
+                    })()}
                   </g>
                 );
               })()}
