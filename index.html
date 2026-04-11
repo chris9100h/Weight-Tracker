@@ -87,7 +87,12 @@ function parseCSV(text) {
   }
   return { rows, errors };
 }
-function calcTrend(entries, endIdx) {
+function genId() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
   const win = entries.slice(Math.max(0,endIdx-6),endIdx+1);
   if (win.length < 2) return null;
   const n=win.length, xs=win.map((_,i)=>i), ys=win.map(e=>e.weight);
@@ -198,7 +203,7 @@ function App() {
         Object.assign(ex, {weight:row.weight, note:row.note}); updated++;
         await upsertEntry(ex);
       } else {
-        const entry = {id: crypto.randomUUID(), ...row};
+        const entry = {id: genId(), ...row};
         next.push(entry); added++;
         await upsertEntry(entry);
       }
