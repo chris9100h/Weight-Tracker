@@ -20,6 +20,10 @@
 <script type="text/babel">
 const { useState, useEffect, useRef, useMemo } = React;
 
+const SUPABASE_URL = "https://lzhkbbwcjfsvpkpmcwdu.supabase.co";
+const SUPABASE_KEY = "sb_publishable_XJ4T6c5ARL7Jn9OFfZ42jg_CdMFOBuY";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 const ORANGE = "#f97316";
 const TREND_COLOR = "#facc15";
 const BG = "#0a0a0a";
@@ -28,17 +32,21 @@ const SURFACE2 = "#1e1e1e";
 const BORDER = "#2a2a2a";
 const TEXT = "#f5f5f5";
 const TEXT2 = "#a3a3a3";
-const SUPABASE_URL = "https://lzhkbbwcjfsvpkpmcwdu.supabase.co";
-const SUPABASE_KEY = "sb_publishable_XJ4T6c5ARL7Jn9OFfZ42jg_CdMFOBuY";
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const STORAGE_KEY = "weight_entries_v1";
 
+function genId() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
 function loadEntries() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); } catch { return []; }
 }
-function saveEntries(e) {
+function saveLocal(e) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(e)); } catch {}
 }
+const today = () => new Date().toISOString().slice(0, 10);
 
 async function fetchFromSupabase() {
   const { data, error } = await sb.from("weight_entries").select("*").order("date", { ascending: true });
@@ -49,11 +57,14 @@ async function upsertEntry(entry) {
   const { error } = await sb.from("weight_entries").upsert({ id: entry.id, date: entry.date, weight: entry.weight, note: entry.note || "" });
   if (error) throw error;
 }
+async function updateNote(id, note) {
+  const { error } = await sb.from("weight_entries").update({ note }).eq("id", id);
+  if (error) throw error;
+}
 async function deleteFromSupabase(id) {
   const { error } = await sb.from("weight_entries").delete().eq("id", id);
   if (error) throw error;
 }
-const today = () => new Date().toISOString().slice(0, 10);
 
 function parseCSVDate(raw) {
   raw = raw.trim().replace(/^"|"$/g, "");
@@ -87,12 +98,7 @@ function parseCSV(text) {
   }
   return { rows, errors };
 }
-function genId() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-    const r = Math.random() * 16 | 0;
-    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-  });
-}
+function calcTrend(entries, endIdx) {
   const win = entries.slice(Math.max(0,endIdx-6),endIdx+1);
   if (win.length < 2) return null;
   const n=win.length, xs=win.map((_,i)=>i), ys=win.map(e=>e.weight);
@@ -124,13 +130,9 @@ function App() {
   const fileRef = useRef(null);
 
   useEffect(() => {
-    saveEntries(entries);
-  }, [entries]);
-
-  useEffect(() => {
     setSyncing(true);
     fetchFromSupabase()
-      .then(data => { setEntries(data); saveEntries(data); setSyncError(null); })
+      .then(data => { setEntries(data); saveLocal(data); setSyncError(null); })
       .catch(() => setSyncError("Offline — showing local data"))
       .finally(() => setSyncing(false));
   }, []);
@@ -158,18 +160,36 @@ function App() {
 
   const trendData = useMemo(() => filtered.map((_,i)=>calcTrend(filtered,i)), [filtered]);
 
-  function addEntry() {
+  async function addEntry() {
     if (!form.date||!form.weight) return;
     const w=parseFloat(form.weight); if(isNaN(w)) return;
-    if (editId) { setEntries(prev=>prev.map(e=>e.id===editId?{...e,date:form.date,weight:w,note:form.note}:e)); setEditId(null); }
-    else setEntries(prev=>[...prev,{id:Date.now(),date:form.date,weight:w,note:form.note}]);
-    setForm({date:today(),weight:"",note:""});
+    const entry = editId
+      ? { id: editId, date: form.date, weight: w, note: form.note }
+      : { id: genId(), date: form.date, weight: w, note: form.note };
+    try {
+      await upsertEntry(entry);
+      if (editId) { setEntries(prev=>prev.map(e=>e.id===editId?entry:e)); setEditId(null); }
+      else { setEntries(prev=>[...prev, entry]); }
+      setForm({date:today(),weight:"",note:""});
+    } catch(err) { alert("Failed to save: " + err.message); }
   }
-  function deleteEntry(id) { setEntries(prev=>prev.filter(e=>e.id!==id)); }
+
+  async function deleteEntry(id) {
+    try { await deleteFromSupabase(id); setEntries(prev=>prev.filter(e=>e.id!==id)); }
+    catch(err) { alert("Failed to delete: " + err.message); }
+  }
+
   function startEdit(e) { setEditId(e.id); setForm({date:e.date,weight:String(e.weight),note:e.note||""}); }
   function cancelEdit() { setEditId(null); setForm({date:today(),weight:"",note:""}); }
   function startNoteEdit(e) { setNoteEditId(e.id); setNoteEditVal(e.note||""); }
-  function saveNote(id) { setEntries(prev=>prev.map(e=>e.id===id?{...e,note:noteEditVal}:e)); setNoteEditId(null); }
+
+  async function saveNote(id) {
+    try {
+      await updateNote(id, noteEditVal);
+      setEntries(prev=>prev.map(e=>e.id===id?{...e,note:noteEditVal}:e));
+    } catch(err) { alert("Failed to save note: " + err.message); }
+    setNoteEditId(null);
+  }
 
   function getCSV() {
     const header = "Date,Weight (kg),Note";
@@ -192,10 +212,14 @@ function App() {
     reader.onload=ev=>{ const {rows,errors}=parseCSV(ev.target.result); setImportRows(rows); setImportErrors(errors); setImportResult(null); };
     reader.readAsText(file,"UTF-8"); e.target.value="";
   }
+
   async function doImport() {
     if (!importRows.length) return;
     let added=0, skipped=0, updated=0;
     const next = importMode==="replace" ? [] : [...entries];
+    if (importMode==="replace") {
+      for (const e of entries) await deleteFromSupabase(e.id);
+    }
     for (const row of importRows) {
       const ex = next.find(e=>e.date===row.date);
       if (ex) {
@@ -207,9 +231,6 @@ function App() {
         next.push(entry); added++;
         await upsertEntry(entry);
       }
-    }
-    if (importMode==="replace") {
-      for (const e of entries) await deleteFromSupabase(e.id);
     }
     setEntries(next);
     setImportResult({added,skipped,updated});
@@ -254,7 +275,6 @@ function App() {
   return (
     <div style={{background:BG,minHeight:"100vh",color:TEXT,fontFamily:"system-ui,sans-serif",padding:"20px 16px",maxWidth:"900px",margin:"0 auto"}}>
 
-      {/* Export Modal */}
       {exportModal&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:99,display:"flex",alignItems:"center",justifyContent:"center",padding:"16px"}}>
           <div style={{background:"#111",border:`1px solid ${BORDER}`,borderRadius:"12px",padding:"20px",width:"100%",maxWidth:"520px"}}>
@@ -273,7 +293,6 @@ function App() {
         </div>
       )}
 
-      {/* Import Modal */}
       {importModal&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:99,display:"flex",alignItems:"center",justifyContent:"center",padding:"16px"}}>
           <div style={{background:"#111",border:`1px solid ${BORDER}`,borderRadius:"12px",padding:"20px",width:"100%",maxWidth:"480px"}}>
@@ -313,8 +332,8 @@ function App() {
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"18px"}}>
         <h2 style={{margin:0,fontSize:"18px",fontWeight:500,color:ORANGE}}>Weight tracker</h2>
         <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
-          {syncing && <span style={{fontSize:"11px",color:TEXT2}}>Syncing…</span>}
-          {syncError && <span style={{fontSize:"11px",color:"#f87171"}}>{syncError}</span>}
+          {syncing&&<span style={{fontSize:"11px",color:TEXT2}}>Syncing…</span>}
+          {syncError&&<span style={{fontSize:"11px",color:"#f87171"}}>{syncError}</span>}
           <button onClick={openExport} style={{...btn(SURFACE2,TEXT2),fontSize:"12px"}}>Export CSV</button>
           <button onClick={()=>setImportModal(true)} style={{...btn(SURFACE2,TEXT2),fontSize:"12px"}}>Import CSV</button>
         </div>
