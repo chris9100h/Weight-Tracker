@@ -12,7 +12,10 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: #0a0a0a; color: #f5f5f5; font-family: system-ui, sans-serif; }
   input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
-  ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #141414; } ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 3px; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: #141414; }
+  ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 3px; }
+  @media (max-width: 599px) { .form-grid { grid-template-columns: 1fr !important; } .add-btn { width: 100%; } }
 </style>
 </head>
 <body>
@@ -109,7 +112,6 @@ function calcTrend(entries, endIdx) {
 
 function App() {
   const [entries, setEntries] = useState(loadEntries);
-  const [appMenu, setAppMenu] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState(null);
   const [form, setForm] = useState({ date: today(), weight: "", note: "" });
@@ -127,6 +129,7 @@ function App() {
   const [importErrors, setImportErrors] = useState([]);
   const [exportModal, setExportModal] = useState(false);
   const [exportCopied, setExportCopied] = useState(false);
+  const [appMenu, setAppMenu] = useState(false);
   const svgRef = useRef(null);
   const fileRef = useRef(null);
 
@@ -170,7 +173,7 @@ function App() {
     try {
       await upsertEntry(entry);
       if (editId) { setEntries(prev=>prev.map(e=>e.id===editId?entry:e)); setEditId(null); }
-      else { setEntries(prev=>[...prev, entry]); }
+      else setEntries(prev=>[...prev, entry]);
       setForm({date:today(),weight:"",note:""});
     } catch(err) { alert("Failed to save: " + err.message); }
   }
@@ -335,7 +338,6 @@ function App() {
           <div style={{fontFamily:"monospace",fontWeight:700,fontSize:"18px",color:ORANGE,letterSpacing:"0.05em",textTransform:"uppercase"}}>Weight Tracker</div>
           <div style={{fontFamily:"monospace",fontSize:"12px",color:TEXT2,marginTop:"3px"}}>Daily tracking · fasted · kg</div>
         </div>
-
         <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
           {syncing&&<span style={{fontSize:"11px",color:TEXT2}}>Syncing…</span>}
           {syncError&&<span style={{fontSize:"11px",color:"#f87171"}}>{syncError}</span>}
@@ -351,7 +353,7 @@ function App() {
                   {label:"Glucose Log",icon:"🩸",url:"https://chris9100h.github.io/Glucose-Log/"},
                   {label:"Water Tracker",icon:"💧",url:"https://chris9100h.github.io/Watertracker_webapp/"},
                 ].map(app=>(
-                  <a key={app.label} href={app.url} style={{display:"flex",alignItems:"center",gap:"10px",padding:"9px 12px",borderRadius:"7px",textDecoration:"none",marginBottom:"4px",background:"none"}}>
+                  <a key={app.label} href={app.url} style={{display:"flex",alignItems:"center",gap:"10px",padding:"9px 12px",borderRadius:"7px",textDecoration:"none",marginBottom:"4px"}}>
                     <span style={{fontSize:"18px"}}>{app.icon}</span>
                     <span style={{fontSize:"13px",color:TEXT}}>{app.label}</span>
                   </a>
@@ -435,25 +437,21 @@ function App() {
               ))}
               {tooltip&&(()=>{
                 const e=filtered[tooltip.i];
-                const tx=Math.min(Math.max(tooltip.x,PL+55),W-PR-55);
-                const ty=tooltip.y>PT+chartH/2?tooltip.y-56:tooltip.y+12;
+                const tx=Math.min(Math.max(tooltip.x,PL+58),W-PR-58);
+                const ty=tooltip.y>PT+chartH/2?tooltip.y-70:tooltip.y+12;
+                const trend=trendData[tooltip.i];
+                const rows=2+(trend!=null?1:0)+(e.note?1:0);
+                const h=10+rows*15;
+                let y=ty+14;
                 return(
                   <g>
                     <line x1={tooltip.x} x2={tooltip.x} y1={PT} y2={PT+chartH} stroke={ORANGE} strokeWidth={0.8} strokeDasharray="3,3"/>
                     <circle cx={tooltip.x} cy={tooltip.y} r={5} fill={ORANGE} stroke={SURFACE} strokeWidth={2}/>
-                    {(() => {
-                      const trend = trendData[tooltip.i];
-                      const rows = 2 + (trend!=null?1:0) + (e.note?1:0);
-                      const h = 10 + rows*15;
-                      let y = ty+14;
-                      return <>
-                        <rect x={tx-58} y={ty} width={116} height={h} rx={5} fill={SURFACE2} stroke={BORDER}/>
-                        <text x={tx} y={y} textAnchor="middle" fontSize={11} fill={TEXT2}>{e.date}</text>
-                        <text x={tx} y={y+=15} textAnchor="middle" fontSize={13} fontWeight="500" fill={ORANGE}>{e.weight.toFixed(1)} kg</text>
-                        {trend!=null&&<text x={tx} y={y+=15} textAnchor="middle" fontSize={11} fill={TREND_COLOR}>7d avg: {trend.toFixed(1)} kg</text>}
-                        {e.note&&<text x={tx} y={y+=15} textAnchor="middle" fontSize={10} fill="#60a5fa">{e.note.slice(0,18)}{e.note.length>18?"…":""}</text>}
-                      </>;
-                    })()}
+                    <rect x={tx-58} y={ty} width={116} height={h} rx={5} fill={SURFACE2} stroke={BORDER}/>
+                    <text x={tx} y={y} textAnchor="middle" fontSize={11} fill={TEXT2}>{e.date}</text>
+                    <text x={tx} y={y+=15} textAnchor="middle" fontSize={13} fontWeight="500" fill={ORANGE}>{e.weight.toFixed(1)} kg</text>
+                    {trend!=null&&<text x={tx} y={y+=15} textAnchor="middle" fontSize={11} fill={TREND_COLOR}>7d avg: {trend.toFixed(1)} kg</text>}
+                    {e.note&&<text x={tx} y={y+=15} textAnchor="middle" fontSize={10} fill="#60a5fa">{e.note.slice(0,18)}{e.note.length>18?"…":""}</text>}
                   </g>
                 );
               })()}
@@ -480,12 +478,12 @@ function App() {
       <div style={{background:SURFACE,border:`1px solid ${BORDER}`,borderRadius:"10px",overflow:"hidden",marginBottom:"16px"}}>
         {sectionHeader(editId?"Edit entry":"New entry")}
         <div style={{padding:"14px"}}>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 2fr auto",gap:"8px",alignItems:"end"}}>
+          <div className="form-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr 2fr auto",gap:"8px",alignItems:"end"}}>
             <div><div style={{fontSize:"11px",color:TEXT2,marginBottom:"4px"}}>Date</div><input type="date" value={form.date} onChange={e=>setForm(f=>({...f,date:e.target.value}))} style={inp}/></div>
             <div><div style={{fontSize:"11px",color:TEXT2,marginBottom:"4px"}}>Weight (kg)</div><input type="number" step="0.1" placeholder="80.5" value={form.weight} onChange={e=>setForm(f=>({...f,weight:e.target.value}))} style={inp}/></div>
             <div><div style={{fontSize:"11px",color:TEXT2,marginBottom:"4px"}}>Note (optional)</div><input type="text" placeholder="e.g. after workout" value={form.note} onChange={e=>setForm(f=>({...f,note:e.target.value}))} style={inp}/></div>
             <div style={{display:"flex",gap:"6px"}}>
-              <button onClick={addEntry} style={btn(ORANGE,"#000")}>{editId?"Save":"+ Add"}</button>
+              <button className="add-btn" onClick={addEntry} style={btn(ORANGE,"#000")}>{editId?"Save":"+ Add"}</button>
               {editId&&<button onClick={cancelEdit} style={btn(SURFACE2,TEXT2)}>✕</button>}
             </div>
           </div>
