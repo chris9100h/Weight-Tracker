@@ -21,7 +21,7 @@
 const { useState, useEffect, useRef, useMemo } = React;
 
 const SUPABASE_URL = "https://lzhkbbwcjfsvpkpmcwdu.supabase.co";
-const SUPABASE_KEY = "sb_publishable_XJ4T6c5ARL7Jn9OFfZ42jg_CdMFOBuY";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx6aGtiYndjamZzdnBrcG1jd2R1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4NTUzNDUsImV4cCI6MjA5MTQzMTM0NX0.GhbRy4qhwHbcLgPcp0v5JEtC_oS95O7sh0yl7VXxgDI";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const ORANGE = "#f97316";
@@ -330,7 +330,10 @@ function App() {
       )}
 
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"18px"}}>
-        <h2 style={{margin:0,fontSize:"18px",fontWeight:500,color:ORANGE}}>Weight tracker</h2>
+        <div style={{borderLeft:"3px solid "+ORANGE,paddingLeft:"12px"}}>
+          <div style={{fontFamily:"monospace",fontWeight:700,fontSize:"18px",color:ORANGE,letterSpacing:"0.05em",textTransform:"uppercase"}}>Weight Tracker</div>
+          <div style={{fontFamily:"monospace",fontSize:"12px",color:TEXT2,marginTop:"3px"}}>Daily tracking · fasted · kg</div>
+        </div>
         <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
           {syncing&&<span style={{fontSize:"11px",color:TEXT2}}>Syncing…</span>}
           {syncError&&<span style={{fontSize:"11px",color:"#f87171"}}>{syncError}</span>}
