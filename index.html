@@ -21,7 +21,7 @@
 const { useState, useEffect, useRef, useMemo } = React;
 
 const SUPABASE_URL = "https://lzhkbbwcjfsvpkpmcwdu.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx6aGtiYndjamZzdnBrcG1jd2R1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4NTUzNDUsImV4cCI6MjA5MTQzMTM0NX0.GhbRy4qhwHbcLgPcp0v5JEtC_oS95O7sh0yl7VXxgDI";
+const SUPABASE_KEY = "DEIN_ANON_KEY_HIER";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const ORANGE = "#f97316";
@@ -109,6 +109,7 @@ function calcTrend(entries, endIdx) {
 
 function App() {
   const [entries, setEntries] = useState(loadEntries);
+  const [appMenu, setAppMenu] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState(null);
   const [form, setForm] = useState({ date: today(), weight: "", note: "" });
@@ -334,9 +335,35 @@ function App() {
           <div style={{fontFamily:"monospace",fontWeight:700,fontSize:"18px",color:ORANGE,letterSpacing:"0.05em",textTransform:"uppercase"}}>Weight Tracker</div>
           <div style={{fontFamily:"monospace",fontSize:"12px",color:TEXT2,marginTop:"3px"}}>Daily tracking · fasted · kg</div>
         </div>
+
         <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
           {syncing&&<span style={{fontSize:"11px",color:TEXT2}}>Syncing…</span>}
           {syncError&&<span style={{fontSize:"11px",color:"#f87171"}}>{syncError}</span>}
+          <div style={{position:"relative"}}>
+            <button onClick={()=>setAppMenu(v=>!v)} style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"3px",padding:"7px",background:SURFACE2,border:`1px solid ${appMenu?ORANGE:BORDER}`,borderRadius:"6px",cursor:"pointer",width:"34px",height:"34px",alignItems:"center",justifyItems:"center"}}>
+              {Array.from({length:6}).map((_,i)=>(
+                <span key={i} style={{width:"4px",height:"4px",borderRadius:"50%",background:appMenu?ORANGE:TEXT2,display:"block"}}></span>
+              ))}
+            </button>
+            {appMenu&&(
+              <div style={{position:"absolute",right:0,top:"42px",background:"#1a1a1a",border:`1px solid ${BORDER}`,borderRadius:"10px",padding:"6px",zIndex:50,minWidth:"180px",boxShadow:"0 8px 24px rgba(0,0,0,0.5)"}}>
+                {[
+                  {label:"Glucose Log",icon:"🩸",url:"https://chris9100h.github.io/Glucose-Log/"},
+                  {label:"Water Tracker",icon:"💧",url:"https://chris9100h.github.io/Watertracker_webapp/"},
+                ].map(app=>(
+                  <a key={app.label} href={app.url} style={{display:"flex",alignItems:"center",gap:"10px",padding:"9px 12px",borderRadius:"7px",textDecoration:"none",marginBottom:"4px",background:"none"}}>
+                    <span style={{fontSize:"18px"}}>{app.icon}</span>
+                    <span style={{fontSize:"13px",color:TEXT}}>{app.label}</span>
+                  </a>
+                ))}
+                <div style={{borderTop:`1px solid ${BORDER}`,margin:"4px 0"}}></div>
+                <div style={{display:"flex",alignItems:"center",gap:"10px",padding:"9px 12px",borderRadius:"7px",background:SURFACE2,border:`1px solid ${BORDER}`}}>
+                  <span style={{fontSize:"18px"}}>⚖️</span>
+                  <span style={{fontSize:"13px",color:ORANGE,fontWeight:500}}>Weight Tracker</span>
+                </div>
+              </div>
+            )}
+          </div>
           <button onClick={openExport} style={{...btn(SURFACE2,TEXT2),fontSize:"12px"}}>Export CSV</button>
           <button onClick={()=>setImportModal(true)} style={{...btn(SURFACE2,TEXT2),fontSize:"12px"}}>Import CSV</button>
         </div>
